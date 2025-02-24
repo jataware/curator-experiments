@@ -54,7 +54,3 @@ documentation: |
 
     If a user asks you to filter based on the type of cancer, it is often productive to filter on 
     disease type, primary diagnosis, or primary site.
-
-temp: |
-    Here are some examples of how to use the API:
-    {examples}
