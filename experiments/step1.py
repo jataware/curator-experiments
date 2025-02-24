@@ -1,20 +1,13 @@
+"""
+Step 1:
+an example correct solution for the query:
+    'Find cases of lymphoblastic leukemia with a JAK1 somatic mutation and save the result to a csv'
+"""
+
 import pandas as pd
 from pandas import json_normalize
-
 import requests
 import json
-
-
-
-from dataclasses import dataclass
-
-@dataclass
-class Content:
-    field: str  #TODO: this needs to be pulled from facets...
-    value: str  #TODO: this needs to be pulled from facets...
-
-
-import pdb
 
 
 def get_ssm_occurrences():
@@ -68,7 +61,13 @@ def get_ssm_occurrences():
     print(f"total hits: {response.json()['data']['pagination']['total']}")
     all_ssms = response.json()['data']['hits']
 
-    pdb.set_trace()
 
     ssms = pd.DataFrame(json_normalize(all_ssms))
-    ssms.head()
+
+    # save as CSV
+    ssms.to_csv(f"ssm_occurrences_lymphoblastic_leukemia_JAK1.csv", index=False)
+
+
+
+if __name__ == "__main__":
+    get_ssm_occurrences()
