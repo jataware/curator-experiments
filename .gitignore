@@ -15,3 +15,7 @@ __pycache__/
 # csv and other data files
 *.csv
 *.tsv
+
+
+
+workdir*/
