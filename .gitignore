@@ -1,0 +1,12 @@
+# autoenv scripts
+.autoenv
+.autoleave
+
+
+# chat history
+.chat
+.history
+
+
+# python cache
+__pycache__/
