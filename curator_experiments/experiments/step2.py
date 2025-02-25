@@ -22,7 +22,7 @@ here = Path(__file__).parent
 
 def main():
     with move_to_isolated_dir():
-        test_loop(num_trials=10, timeout_seconds=600)
+        test_loop(num_trials=100, timeout_seconds=600)
 
 
 
@@ -67,20 +67,20 @@ def test_loop(num_trials: int, timeout_seconds: int):
         print('='*80)
         print(f"Trial {i}")
         capture_code.set_i(i)
-        with timeout(timeout_seconds):
-            test_case(
-                query_template.format(name=f'trial_{i}.csv'),
-                capture_code=capture_code
-            )
+        try:
+            with timeout(timeout_seconds):
+                test_case(query_template.format(name=f'trial_{i}.csv'), capture_code=capture_code)
+        except (Exception, KeyboardInterrupt) as e:
+            print(f"Error: {e}")
+            capture_code.code[f'trial_{i}'].append(f"Error: {e}")
+        save_to_yaml({f'trial_{i}': capture_code.code[f'trial_{i}']}, Path('captured_code.yaml'), append=True)
         print('='*80)
 
     # Save all of the captured code to a file
-    with open('captured_code.yaml', 'w') as f:
-        yaml.dump(capture_code.code, f)
 
 
 
-def save_to_yaml(data, filename: Path):
+def save_to_yaml(data: dict[list[str]], filename: Path, append: bool = False):
     #TODO: better formatting of saved code with block lines rather than escaping whitespace
     lines = []
     for trial, codes in data.items():
@@ -90,8 +90,18 @@ def save_to_yaml(data, filename: Path):
             for line in code.split('\n'):
                 lines.append(f"    {line}")
     
-    filename.write_text('\n'.join(lines))
-    print(f"Saved captured code to {filename}")
+    if append:
+        with filename.open('a') as f:
+            lines.insert(0, '\n')  # add a newline at the beginning to separate from previous content
+            f.write('\n'.join(lines))
+        print(f"Appended captured code to {filename}")
+    else:
+        filename.write_text('\n'.join(lines))
+        print(f"Saved captured code to {filename}")
+
+
+# def append_to_yaml(data, filename: Path):
+
 
 
 # def fix_yaml():
