@@ -33,7 +33,7 @@ class CaptureCode:
     def set_i(self, i):
         self.i = i
     def __call__(self, code):
-        self.code[self.i].append(code)
+        self.code[f'trial_{self.i}'].append(code)
 
 
 def test_case(query:str, capture_code:CaptureCode):
@@ -80,10 +80,31 @@ def test_loop(num_trials: int, timeout_seconds: int):
 
 
 
-def save_to_yaml(data, filename):
+def save_to_yaml(data, filename: Path):
     #TODO: better formatting of saved code with block lines rather than escaping whitespace
-    pdb.set_trace()
+    lines = []
+    for trial, codes in data.items():
+        lines.append(f"{trial}:")
+        for code in codes:
+            lines.append(f"  - |")
+            for line in code.split('\n'):
+                lines.append(f"    {line}")
+    
+    filename.write_text('\n'.join(lines))
+    print(f"Saved captured code to {filename}")
 
+
+# def fix_yaml():
+#     # load a yaml file
+#     path = here/'../../workdir_20250224_125812/captured_code.yaml'
+#     with open(path, 'r') as f:
+#         data = yaml.safe_load(f)
+    
+
+#     # create a new dict from the yaml
+#     fixed_data = {f'trial_{k}':v for k, v in data.items()}
+    
+#     save_to_yaml(fixed_data, path.parent/'fixed_captured_code.yaml')
 
 
 from archytas.tool_utils import tool
@@ -153,6 +174,17 @@ def timeout(seconds):
 
 
 def characterize_deviation():
+    """
+    Approach:
+    1. randomly select one example as the reference
+    2. have the LLM first rank and then score (0-100) how similar the other examples are to the reference
+    3. use the farthest example (and perhaps also the middle (distance-wise)) as a new reference
+    4. repeat the process with the new reference
+    5. repeat for a few references (perhaps just randomly select references too, or evenly select from the spread of the first ranking)
+    6. create vectors for each example being the score distance from the reference 0
+    7. use k-means to cluster into groups
+    8. can plot and look at the std of each cluster
+    """
     pdb.set_trace()
 
 
