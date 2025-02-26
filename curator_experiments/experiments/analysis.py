@@ -28,14 +28,22 @@ def analyze_step2():
     reference_path = here / 'ssm_occurrences_lymphoblastic_leukemia_JAK1.csv'
     reference = pd.read_csv(reference_path)
     solution_ids = set(reference['id'].tolist())
-    
-    # save the score of each trial
-    scores: dict[str, Score] = {}
 
-    # load each of the trials and compare to the reference
+
+    # load all the trials
     workdir = here / '../../workdir_20250225_132405'
     code_path = workdir/'captured_code.yaml'
     trials: dict = yaml.safe_load(code_path.open())
+
+    # measure the code spread
+    reference_code_path = here / 'step1.py'
+    reference_code = reference_code_path.read_text()
+    code_spread = measure_code_spread(reference_code, trials)
+
+    # save the score of each trial
+    scores: dict[str, Score] = {}
+
+    # compare each of the trials to the reference
     for trial, code_chunks in tqdm(trials.items(), desc='Analyzing trials', total=len(trials)):
         data_path = workdir/f'{trial}.csv'
         
@@ -134,6 +142,67 @@ def analyze_step2():
 
     # TODO: plotting of the clustering of the code solutions itself. 
 
+
+
+
+from adhoc_api.uaii import ClaudeAgent#, ClaudeMessage, ClaudeRole
+def measure_code_spread(reference: str, trials: dict[str, list[str]]):
+    # convert the trials to one string per trial:
+    trials = {trial: '\n\n############\n\n'.join(code_chunks) for trial, code_chunks in trials.items()}
+    trail_joiner = '\n\n' + '-'*80 + '\n\n'
+    trials_str = trail_joiner.join([f"{trial}:\n```\n{code}\n```" for trial, code in trials.items()])
+    # print(trials_str)
+
+    agent = ClaudeAgent(model='claude-3-5-sonnet-latest', system_prompt='you are a python expert helping to analyze code')
+    res = agent.message(f'''\
+I have reference code for solving a task to collect data from GDC.
+Additionally I have a large collection of attempts/trials to solve the same problem, where each trial may or may not correctly solve the problem.
+
+I want you to rank and score for each trial, how similar it is (code-wise) to the reference, relative to all the other trials.
+Basically this is sort of like taking the diff between the reference and solutions. But it is a very rich diff, e.g. if we could parse each solution into it's AST, and then directly compare how similar the ASTs are to eachother. That's what I want you to do conceptually by looking at the code.
+A score of 100 means it is completely identical to the reference solution (modulo differences in whitespace and comments). The solution approach used the exact same programming constructs, and if run, it's result would be indistinguishable from the reference solution.
+A score of 0 means it is completely different from the reference solution, not solving the same problem, not even in the same language. Just so woefully different there is absolutely nothing of similarity between the it and the reference. Generally you will not give 0s since most solutions will be in the right language.
+Scores in between should be based on the style, approach, language features used, expected inputs/outputs, etc. Basically use your best judgement to quantify how similar how the trial solves the problem is to how the reference solves the problem.
+e.g. a score of 95 might mean the trial is very close to the reference, just with some renamed variables or slightly different metadata
+e.g. a score of 80 might mean the trial is largely taking the same approach as the reference just with a few key differences
+Note that some of the trials may include error messages that resulted from running the code. You can ignore those for this analysis.
+Also note some of the trials might have multiple attempts at solving the problem. Multiple attempts is points off for similarity, but if the attempts themselves are still quite similar to the reference, that gets a higher score.
+So your output should be a list of the trial names with their score in order of your ranking from most similar to the reference to least similar.
+Please format your output as just <trial name>: <score> on a new line with no other punctuation or text.
+For example, you might output the following:
+trial_34: 98
+trial_1: 97
+trial_7: 65
+trial_16: 65
+... # all other trials in your ranked order...
+trial_28: 51
+trial 30: 50
+trial_2: 47
+
+Here is the reference solution:
+```
+{reference}
+```
+
+and here are each of the trails:
+{trials_str}
+                        
+Please output your rankings and scores. Please do not include any other text or formatting in your output.
+''')
+    rankings = []
+    lines = [*filter(lambda x: x.strip(), res.splitlines())]
+    for i, line in enumerate(lines):
+        trial, score = line.split(':')
+        rankings.append((i, trial.strip(), float(score.strip())))
+        print(f"{i}: {trial} - {score}")
+
+    # print(res)
+    pdb.set_trace()
+    # for i in res:
+    #     print(i, end='')
+    # print()
+    # pdb.set_trace()
+    # ...
 
 
 
