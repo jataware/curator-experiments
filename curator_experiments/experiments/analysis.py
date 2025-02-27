@@ -6,11 +6,13 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 import numpy as np
 from adhoc_api.uaii import ClaudeAgent, OpenAIAgent
+from collections import defaultdict
 
 
 import pdb
 
 here = Path(__file__).parent
+workdir = here / '../../workdir_20250225_132405'
 
 def main():
     analyze_step2()
@@ -32,14 +34,15 @@ def analyze_step2():
 
 
     # load all the trials
-    workdir = here / '../../workdir_20250225_132405'
+    # workdir = here / '../../workdir_20250225_132405'
     code_path = workdir/'captured_code.yaml'
     trials: dict = yaml.safe_load(code_path.open())
 
     # measure the code spread
     reference_code_path = here / 'step1.py'
     reference_code = reference_code_path.read_text()
-    code_spread = measure_code_spread(reference_code, trials)
+    # code_spread = measure_code_spread(reference_code, trials)
+    code_clusters = measure_code_clusters(reference_code, trials)
 
     # save the score of each trial
     scores: dict[str, Score] = {}
@@ -144,8 +147,84 @@ def analyze_step2():
     # TODO: plotting of the clustering of the code solutions itself. 
 
 
-from collections import defaultdict
-def measure_code_spread(reference: str, trials: dict[str, list[str]], n_repeats: int = 10):
+def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10):
+    primary_ranking = measure_code_spread_trial(reference, trials)
+    # select N other evenly spaced trials from the primary ranking
+    selections = np.linspace(0, len(primary_ranking)-1, N).astype(int)[1:]
+    secondary_references_names = [primary_ranking[i][1] for i in selections]
+    secondary_references = ['\n\n############\n\n'.join(trials[name]) for name in secondary_references_names]
+    all_secondary_rankings = []
+    for secondary_reference in tqdm(secondary_references, desc='measuring secondary references', total=len(secondary_references)):
+        try:
+            secondary_ranking = measure_code_spread_trial(secondary_reference, trials)
+            all_secondary_rankings.append(secondary_ranking)
+        except Exception as e:
+            print(f"Error measuring secondary reference {secondary_reference}: {e}")
+            continue
+
+    # dictionaries for building the feature vectors
+    rank_feature_dict: dict[str, list[int]] = defaultdict(list)
+    score_feature_dict: dict[str, list[float]] = defaultdict(list)
+
+    all_rankings = [primary_ranking] + all_secondary_rankings
+    for rankings in all_rankings:
+        # generate a dictionary out of the rankings for easy lookup
+        ranking_map: dict[str, tuple[int, float]] = {}
+        for rank, name, score in rankings:
+            if name in ranking_map: print(f"WARNING: Duplicate name '{name}' in rankings")
+            ranking_map[name] = (rank, score)
+        
+        # add every trial into the rank and scor feature dicts
+        for trial_name in trials:
+            if trial_name not in ranking_map:
+                # if the trial is not in the ranking, add it with a rank of 0 and score of 0
+                rank_feature_dict[trial_name].append(-100)
+                score_feature_dict[trial_name].append(-100)
+                print(f"WARNING: Trial '{trial_name}' not in ranking map. using -100 for rank and score")
+            else:
+                # otherwise, add the rank and score from the ranking
+                rank, score = ranking_map[trial_name]
+                rank_feature_dict[trial_name].append(rank)
+                score_feature_dict[trial_name].append(score)
+    
+    # convert the dictionaries to ndarrays
+    rank_features = np.array([rank_feature_dict[trial] for trial in trials])
+    score_features = np.array([score_feature_dict[trial] for trial in trials])
+
+    solution_trials = ['trial_12', 'trial_24', 'trial_34', 'trial_58']
+    solution_indices = [list(trials.keys()).index(trial) for trial in solution_trials]
+
+    # plot the features using t-sne (2 separate plots). Highlight the solution trials with red x's
+    from sklearn.manifold import TSNE
+    tsne = TSNE(n_components=2, perplexity=30, n_iter=1000)
+    rank_tsne = tsne.fit_transform(rank_features)
+    score_tsne = tsne.fit_transform(score_features)
+    plt.scatter(rank_tsne[:, 0], rank_tsne[:, 1])
+    plt.scatter(rank_tsne[solution_indices, 0], rank_tsne[solution_indices, 1], color='red', marker='x', s=100)
+    plt.legend(['all trials', 'correct solutions'],)
+    plt.title('t-SNE of Code Similarity Ranks')
+    plt.xlabel('t-SNE 1')
+    plt.ylabel('t-SNE 2')
+    plt.savefig(workdir/'rank_tsne.png')
+    plt.show()
+    
+    plt.scatter(score_tsne[:, 0], score_tsne[:, 1])
+    plt.scatter(score_tsne[solution_indices, 0], score_tsne[solution_indices, 1], color='red', marker='x', s=100)
+    plt.legend(['all trials', 'correct solutions'],)
+    plt.title('t-SNE of Code Similarity Scores')
+    plt.xlabel('t-SNE 1')
+    plt.ylabel('t-SNE 2')
+    plt.savefig(workdir/'score_tsne.png')
+    plt.show()
+
+    
+    # for secondary_reference in secondary_references:
+    #     secondary_rankings = measure_code_spread_trial(secondary_reference, trials)
+    #     all_secondary_rankings.append(secondary_rankings)
+    pdb.set_trace()
+    ...
+
+def measure_code_spread(reference: str, trials: dict[str, list[str]], n_repeats: int = 10) -> list[tuple[int, str, float]]:
     all_rankings = [measure_code_spread_trial(reference, trials) for _ in tqdm(range(n_repeats), desc='Collecting Code Spread Trials', total=n_repeats)]
 
     rank_map = defaultdict(list)
@@ -175,7 +254,7 @@ def measure_code_spread(reference: str, trials: dict[str, list[str]], n_repeats:
     plt.xlabel('Code Similarity Score')
     plt.ylabel('Number of Trials')
     plt.title('Code Similarity Compared to Reference (No Examples Case)')
-    workdir = here / '../../workdir_20250225_132405'
+    # workdir = here / '../../workdir_20250225_132405'
     plt.savefig(workdir/'code_spread_histogram.png')
     plt.show()
 
@@ -183,7 +262,7 @@ def measure_code_spread(reference: str, trials: dict[str, list[str]], n_repeats:
     return averages
 
 
-def measure_code_spread_trial(reference: str, trials: dict[str, list[str]]):
+def measure_code_spread_trial(reference: str, trials: dict[str, list[str]]) -> list[tuple[int, str, float]]:
     # convert the trials to one string per trial:
     trials = {trial: '\n\n############\n\n'.join(code_chunks) for trial, code_chunks in trials.items()}
     trail_joiner = '\n\n' + '-'*80 + '\n\n'
