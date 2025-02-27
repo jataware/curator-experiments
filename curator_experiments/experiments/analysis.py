@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 import numpy as np
+from adhoc_api.uaii import ClaudeAgent, OpenAIAgent
 
 
 import pdb
@@ -143,17 +144,54 @@ def analyze_step2():
     # TODO: plotting of the clustering of the code solutions itself. 
 
 
+from collections import defaultdict
+def measure_code_spread(reference: str, trials: dict[str, list[str]], n_repeats: int = 10):
+    all_rankings = [measure_code_spread_trial(reference, trials) for _ in tqdm(range(n_repeats), desc='Collecting Code Spread Trials', total=n_repeats)]
+
+    rank_map = defaultdict(list)
+    for rankings in all_rankings:
+        for trial in rankings:
+            rank, name, score = trial
+            rank_map[name].append((rank, score))
+
+    # compute the average rank and score for each trial
+    averages = []
+    for name in rank_map:
+        avg_rank = np.mean([rank for rank, _ in rank_map[name]])
+        avg_score = np.mean([score for _, score in rank_map[name]])
+        averages.append((avg_rank, name, avg_score))
+    
+    # sort the averages by the new rank (TBD, could sort by score instead)
+    averages.sort(key=lambda x: x[0])
+
+    # DEBUG printout
+    for i, (rank, name, score) in enumerate(averages):
+        print(f"{i}: {name} - {score}")
+
+    # plot the distribution of the scores
+    scores = [score for _, _, score in averages]
+    plt.hist(scores, bins=range(0, 101, 10), align='left', rwidth=0.8)
+    plt.xticks(range(0, 101, 10))
+    plt.xlabel('Code Similarity Score')
+    plt.ylabel('Number of Trials')
+    plt.title('Code Similarity Compared to Reference (No Examples Case)')
+    workdir = here / '../../workdir_20250225_132405'
+    plt.savefig(workdir/'code_spread_histogram.png')
+    plt.show()
 
 
-from adhoc_api.uaii import ClaudeAgent#, ClaudeMessage, ClaudeRole
-def measure_code_spread(reference: str, trials: dict[str, list[str]]):
+    return averages
+
+
+def measure_code_spread_trial(reference: str, trials: dict[str, list[str]]):
     # convert the trials to one string per trial:
     trials = {trial: '\n\n############\n\n'.join(code_chunks) for trial, code_chunks in trials.items()}
     trail_joiner = '\n\n' + '-'*80 + '\n\n'
     trials_str = trail_joiner.join([f"{trial}:\n```\n{code}\n```" for trial, code in trials.items()])
     # print(trials_str)
 
-    agent = ClaudeAgent(model='claude-3-5-sonnet-latest', system_prompt='you are a python expert helping to analyze code')
+    # agent = ClaudeAgent(model='claude-3-5-sonnet-latest', system_prompt='you are a python expert helping to analyze code')
+    agent = OpenAIAgent(model='gpt-4o', system_prompt='you are a python expert helping to analyze code')
     res = agent.message(f'''\
 I have reference code for solving a task to collect data from GDC.
 Additionally I have a large collection of attempts/trials to solve the same problem, where each trial may or may not correctly solve the problem.
@@ -194,8 +232,10 @@ Please output your rankings and scores. Please do not include any other text or 
     for i, line in enumerate(lines):
         trial, score = line.split(':')
         rankings.append((i, trial.strip(), float(score.strip())))
-        print(f"{i}: {trial} - {score}")
+        # print(f"{i}: {trial} - {score}")  #DEBUG printout
 
+    return rankings
+    
     # print(res)
     pdb.set_trace()
     # for i in res:
