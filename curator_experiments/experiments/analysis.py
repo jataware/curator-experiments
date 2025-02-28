@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from adhoc_api.uaii import ClaudeAgent, OpenAIAgent
 from collections import defaultdict
+from time import sleep
 
 from .utils import timeout
 
@@ -43,6 +44,7 @@ def analyze_step2():
     # measure the code spread
     reference_code_path = here / 'step1.py'
     reference_code = reference_code_path.read_text()
+    reference_code = reference_code.split('"""')[-1].strip()  # remove the docstring
     # code_spread = measure_code_spread(reference_code, trials)
     code_clusters = measure_code_clusters(reference_code, trials)
 
@@ -150,14 +152,20 @@ def analyze_step2():
 
 
 def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10):
+    model_name = 'gpt-4o' # Be sure to adjust the model in the trial function
+    
     # Include the reference in the trials
     reference_trial_number = len(trials)
     while f'trial_{reference_trial_number}' in trials:
         reference_trial_number += 1
     reference_name = f'trial_{reference_trial_number}'
     trials = {**trials, reference_name: [reference]}
+    # primary_ranking = primary_ranking + [(-1, reference_name, 100)]
 
+    # get the primary list of rankings
     primary_ranking = measure_code_spread_trial(reference, trials)
+
+
     # select N other evenly spaced trials from the primary ranking
     selections = np.linspace(0, len(primary_ranking)-1, N).astype(int)[1:]
     secondary_references_names = [primary_ranking[i][1] for i in selections]
@@ -171,6 +179,7 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
             print(f"Error measuring secondary reference {secondary_reference}: {e}")
             continue
         all_secondary_rankings.append(secondary_ranking)
+        sleep(5) # to avoid hitting the API too hard
 
     # dictionaries for building the feature vectors
     rank_feature_dict: dict[str, list[int]] = defaultdict(list)
@@ -181,10 +190,12 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
         # generate a dictionary out of the rankings for easy lookup
         ranking_map: dict[str, tuple[int, float]] = {}
         for rank, name, score in rankings:
-            if name in ranking_map: print(f"WARNING: Duplicate name '{name}' in rankings")
+            if name in ranking_map:
+                print(f"WARNING: Duplicate name '{name}' in rankings. Skipping this entry.")
+                continue
             ranking_map[name] = (rank, score)
         
-        # add every trial into the rank and scor feature dicts
+        # add every trial into the rank and score feature dicts
         for trial_name in trials:
             if trial_name not in ranking_map:
                 # if the trial is not in the ranking, add it with a rank of 0 and score of 0
@@ -207,27 +218,27 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
 
     # plot the features using t-sne (2 separate plots). Highlight the solution trials with red x's
     from sklearn.manifold import TSNE
-    tsne = TSNE(n_components=2, perplexity=30, n_iter=1000)
+    tsne = TSNE(n_components=2, perplexity=30, max_iter=1000)
     rank_tsne = tsne.fit_transform(rank_features)
     score_tsne = tsne.fit_transform(score_features)
     plt.scatter(rank_tsne[:, 0], rank_tsne[:, 1])
     plt.scatter(rank_tsne[solution_indices, 0], rank_tsne[solution_indices, 1], color='red', marker='x', s=100)
-    plt.scatter(rank_tsne[reference_index, 0], rank_tsne[reference_index, 1], color='green', marker='o', s=100)
-    plt.legend(['all trials', 'correct solutions'],)
+    plt.scatter(rank_tsne[reference_index, 0], rank_tsne[reference_index, 1], edgecolors='green', facecolors='none', marker='o', s=100)
+    plt.legend(['all trials', 'correct solutions', 'reference solution'],)
     plt.title('t-SNE of Code Similarity Ranks')
     plt.xlabel('t-SNE 1')
     plt.ylabel('t-SNE 2')
-    plt.savefig(workdir/'rank_tsne.png')
+    plt.savefig(workdir/f'rank_tsne_({model_name}).png')
     plt.show()
     
     plt.scatter(score_tsne[:, 0], score_tsne[:, 1])
     plt.scatter(score_tsne[solution_indices, 0], score_tsne[solution_indices, 1], color='red', marker='x', s=100)
-    plt.scatter(score_tsne[reference_index, 0], score_tsne[reference_index, 1], color='green', marker='o', s=100)
-    plt.legend(['all trials', 'correct solutions'],)
+    plt.scatter(score_tsne[reference_index, 0], score_tsne[reference_index, 1], edgecolors='green', facecolors='none', marker='o', s=100)
+    plt.legend(['all trials', 'correct solutions', 'reference solution'],)
     plt.title('t-SNE of Code Similarity Scores')
     plt.xlabel('t-SNE 1')
     plt.ylabel('t-SNE 2')
-    plt.savefig(workdir/'score_tsne.png')
+    plt.savefig(workdir/f'score_tsne_({model_name}).png')
     plt.show()
 
     # All of the above plotting but with PCA instead
@@ -237,20 +248,22 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
     score_pca = pca.fit_transform(score_features)
     plt.scatter(rank_pca[:, 0], rank_pca[:, 1])
     plt.scatter(rank_pca[solution_indices, 0], rank_pca[solution_indices, 1], color='red', marker='x', s=100)
-    plt.legend(['all trials', 'correct solutions'],)
+    plt.scatter(rank_pca[reference_index, 0], rank_pca[reference_index, 1], edgecolors='green', facecolors='none', marker='o', s=100)
+    plt.legend(['all trials', 'correct solutions', 'reference solution'],)
     plt.title('PCA of Code Similarity Ranks')
     plt.xlabel('PCA 1')
     plt.ylabel('PCA 2')
-    plt.savefig(workdir/'rank_pca.png')
+    plt.savefig(workdir/f'rank_pca_({model_name}).png')
     plt.show()
 
     plt.scatter(score_pca[:, 0], score_pca[:, 1])
     plt.scatter(score_pca[solution_indices, 0], score_pca[solution_indices, 1], color='red', marker='x', s=100)
-    plt.legend(['all trials', 'correct solutions'],)
+    plt.scatter(score_pca[reference_index, 0], score_pca[reference_index, 1], edgecolors='green', facecolors='none', marker='o', s=100)
+    plt.legend(['all trials', 'correct solutions', 'reference solution'],)
     plt.title('PCA of Code Similarity Scores')
     plt.xlabel('PCA 1')
     plt.ylabel('PCA 2')
-    plt.savefig(workdir/'score_pca.png')
+    plt.savefig(workdir/f'score_pca_({model_name}).png')
     plt.show()
 
     
@@ -298,8 +311,8 @@ def measure_code_spread(reference: str, trials: dict[str, list[str]], n_repeats:
 def measure_code_spread_trial(reference: str, trials: dict[str, list[str]]) -> list[tuple[int, str, float]]:
     # convert the trials to one string per trial:
     trials = {trial: '\n\n############\n\n'.join(code_chunks) for trial, code_chunks in trials.items()}
-    trail_joiner = '\n\n' + '-'*80 + '\n\n'
-    trials_str = trail_joiner.join([f"{trial}:\n```\n{code}\n```" for trial, code in trials.items()])
+    trial_joiner = '\n\n' + '-'*80 + '\n\n'
+    trials_str = trial_joiner.join([f"{trial}:\n```\n{code}\n```" for trial, code in trials.items()])
     # print(trials_str)
 
     # agent = ClaudeAgent(model='claude-3-5-sonnet-latest', system_prompt='you are a python expert helping to analyze code')
@@ -334,10 +347,10 @@ Here is the reference solution:
 {reference}
 ```
 
-and here are each of the trails:
+and here are each of the trials:
 {trials_str}
                         
-Please output your rankings and scores. Please do not include any other text or formatting in your output.
+Please output your rankings and scores. Be sure to rank every trial exactly once. Please do not include any other text or formatting in your output.
 ''')
     rankings = []
     lines = [*filter(lambda x: x.strip(), res.splitlines())]
