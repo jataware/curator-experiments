@@ -47,3 +47,37 @@ def timeout(seconds:float, *, message:str|None=None, verbose:bool=False):
         yield
     finally:
         timer.cancel()
+
+
+from collections import defaultdict
+class CaptureCode:
+    def __init__(self):
+        self.i = 0
+        self.code = defaultdict(list)
+    def set_i(self, i):
+        self.i = i
+    def __call__(self, code):
+        self.code[f'trial_{self.i}'].append(code)
+
+
+
+
+from pathlib import Path
+def save_to_yaml(data: dict[list[str]], filename: Path, append: bool = False):
+    #TODO: better formatting of saved code with block lines rather than escaping whitespace
+    lines = []
+    for trial, codes in data.items():
+        lines.append(f"{trial}:")
+        for code in codes:
+            lines.append(f"  - |")
+            for line in code.split('\n'):
+                lines.append(f"    {line}")
+    
+    if append:
+        with filename.open('a') as f:
+            lines.insert(0, '\n')  # add a newline at the beginning to separate from previous content
+            f.write('\n'.join(lines))
+        print(f"Appended captured code to {filename}")
+    else:
+        filename.write_text('\n'.join(lines))
+        print(f"Saved captured code to {filename}")
