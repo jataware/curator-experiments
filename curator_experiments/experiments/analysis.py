@@ -8,6 +8,8 @@ import numpy as np
 from adhoc_api.uaii import ClaudeAgent, OpenAIAgent
 from collections import defaultdict
 
+from .utils import timeout
+
 
 import pdb
 
@@ -148,6 +150,13 @@ def analyze_step2():
 
 
 def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10):
+    # Include the reference in the trials
+    reference_trial_number = len(trials)
+    while f'trial_{reference_trial_number}' in trials:
+        reference_trial_number += 1
+    reference_name = f'trial_{reference_trial_number}'
+    trials = {**trials, reference_name: [reference]}
+
     primary_ranking = measure_code_spread_trial(reference, trials)
     # select N other evenly spaced trials from the primary ranking
     selections = np.linspace(0, len(primary_ranking)-1, N).astype(int)[1:]
@@ -156,11 +165,12 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
     all_secondary_rankings = []
     for secondary_reference in tqdm(secondary_references, desc='measuring secondary references', total=len(secondary_references)):
         try:
-            secondary_ranking = measure_code_spread_trial(secondary_reference, trials)
-            all_secondary_rankings.append(secondary_ranking)
+            with timeout(300):
+                secondary_ranking = measure_code_spread_trial(secondary_reference, trials)
         except Exception as e:
             print(f"Error measuring secondary reference {secondary_reference}: {e}")
             continue
+        all_secondary_rankings.append(secondary_ranking)
 
     # dictionaries for building the feature vectors
     rank_feature_dict: dict[str, list[int]] = defaultdict(list)
@@ -193,6 +203,7 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
 
     solution_trials = ['trial_12', 'trial_24', 'trial_34', 'trial_58']
     solution_indices = [list(trials.keys()).index(trial) for trial in solution_trials]
+    reference_index = [list(trials.keys()).index(reference_name)]
 
     # plot the features using t-sne (2 separate plots). Highlight the solution trials with red x's
     from sklearn.manifold import TSNE
@@ -201,6 +212,7 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
     score_tsne = tsne.fit_transform(score_features)
     plt.scatter(rank_tsne[:, 0], rank_tsne[:, 1])
     plt.scatter(rank_tsne[solution_indices, 0], rank_tsne[solution_indices, 1], color='red', marker='x', s=100)
+    plt.scatter(rank_tsne[reference_index, 0], rank_tsne[reference_index, 1], color='green', marker='o', s=100)
     plt.legend(['all trials', 'correct solutions'],)
     plt.title('t-SNE of Code Similarity Ranks')
     plt.xlabel('t-SNE 1')
@@ -210,6 +222,7 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
     
     plt.scatter(score_tsne[:, 0], score_tsne[:, 1])
     plt.scatter(score_tsne[solution_indices, 0], score_tsne[solution_indices, 1], color='red', marker='x', s=100)
+    plt.scatter(score_tsne[reference_index, 0], score_tsne[reference_index, 1], color='green', marker='o', s=100)
     plt.legend(['all trials', 'correct solutions'],)
     plt.title('t-SNE of Code Similarity Scores')
     plt.xlabel('t-SNE 1')
@@ -217,10 +230,30 @@ def measure_code_clusters(reference: str, trials: dict[str, list[str]], N:int=10
     plt.savefig(workdir/'score_tsne.png')
     plt.show()
 
+    # All of the above plotting but with PCA instead
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    rank_pca = pca.fit_transform(rank_features)
+    score_pca = pca.fit_transform(score_features)
+    plt.scatter(rank_pca[:, 0], rank_pca[:, 1])
+    plt.scatter(rank_pca[solution_indices, 0], rank_pca[solution_indices, 1], color='red', marker='x', s=100)
+    plt.legend(['all trials', 'correct solutions'],)
+    plt.title('PCA of Code Similarity Ranks')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
+    plt.savefig(workdir/'rank_pca.png')
+    plt.show()
+
+    plt.scatter(score_pca[:, 0], score_pca[:, 1])
+    plt.scatter(score_pca[solution_indices, 0], score_pca[solution_indices, 1], color='red', marker='x', s=100)
+    plt.legend(['all trials', 'correct solutions'],)
+    plt.title('PCA of Code Similarity Scores')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
+    plt.savefig(workdir/'score_pca.png')
+    plt.show()
+
     
-    # for secondary_reference in secondary_references:
-    #     secondary_rankings = measure_code_spread_trial(secondary_reference, trials)
-    #     all_secondary_rankings.append(secondary_rankings)
     pdb.set_trace()
     ...
 
