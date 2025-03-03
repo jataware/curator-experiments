@@ -16,9 +16,9 @@ from .utils import timeout
 import pdb
 
 here = Path(__file__).parent
-workdir, task_variant = here / '../../workdir_20250225_132405', '(GDC w/ No Examples)'                 # step 2: no examples
+# workdir, task_variant = here / '../../workdir_20250225_132405', '(GDC w/ No Examples)'                 # step 2: no examples
 # workdir, task_variant = here / '../../workdir_20250228_134952', '(GDC w/ Verbatim Solution Example)'   # step 3a: single verbatim example
-# workdir, task_variant = here / '../../workdir_20250303_134057', '(GDC w/ Single Similar Example)'      # step 3b: single similar example
+workdir, task_variant = here / '../../workdir_20250303_134057', '(GDC w/ Single Similar Example)'      # step 3b: single similar example
 
 
 def main():
@@ -278,7 +278,7 @@ def plot_code_clusters(reference: str, trials: dict[str, list[str]], solution_tr
     from sklearn.decomposition import PCA
     pca = PCA(n_components=2)
     # rank_pca = pca.fit_transform(rank_features)
-    score_pca = pca.fit_transform(score_features)
+    score_pca = pca.fit_transform(score_features)# + np.random.random(score_features.shape)*5) # add a little noise to break ties
     # plt.scatter(rank_pca[:, 0], rank_pca[:, 1])
     # plt.scatter(rank_pca[solution_indices, 0], rank_pca[solution_indices, 1], color='red', marker='x', s=100)
     # plt.scatter(rank_pca[reference_index, 0], rank_pca[reference_index, 1], edgecolors='green', facecolors='none', marker='o', s=100)
@@ -292,7 +292,7 @@ def plot_code_clusters(reference: str, trials: dict[str, list[str]], solution_tr
     plt.scatter(score_pca[remaining_indices, 0], score_pca[remaining_indices, 1], color='red', marker='.', s=25)
     plt.scatter(score_pca[reference_index, 0], score_pca[reference_index, 1], edgecolors='green', facecolors='green', marker='*', s=100)
     plt.scatter(score_pca[solution_indices, 0], score_pca[solution_indices, 1], edgecolors='white', facecolors='blue', marker='o', s=50)
-    plt.legend(['failed trials', 'success trials', 'reference solution'],)
+    plt.legend(['failed trials', 'reference solution', 'success trials'],)
     plt.title('Code Similarity')
     plt.xlabel('PCA 1')
     plt.ylabel('PCA 2')
