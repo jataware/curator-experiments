@@ -4,7 +4,7 @@ run adhoc api N times with the same query and measure the difference in the resu
 
 
 from archytas.react import ReActAgent, FailedTaskError
-from adhoc_api.tool import AdhocApi
+from adhoc_api.tool import AdhocApi, APISpec
 from adhoc_api.loader import load_yaml_api
 from adhoc_api.utils import move_to_isolated_dir
 from pathlib import Path
@@ -14,18 +14,19 @@ import pdb
 
 
 here = Path(__file__).parent
+gdc_folder = here / '../gdc'
 
 
 
 def main():
     with move_to_isolated_dir():
-        test_loop(num_trials=100, timeout_seconds=600)
+        #TODO: parameterize this with cmdline args (mainly the api selection)
+        test_loop(num_trials=100, timeout_seconds=600, api=step_3b_api())
 
 
 
-def test_case(query:str, capture_code:CaptureCode):
+def test_case(query:str, capture_code:CaptureCode, api: APISpec):
     # Set up AdhocApi with GDC API
-    api = load_yaml_api(here/'../gdc/api_no_examples.yaml')
     adhoc_api = AdhocApi(
         apis=[api],
         drafter_config={'provider': 'google', 'model': 'gemini-1.5-pro-001'}
@@ -45,7 +46,7 @@ def test_case(query:str, capture_code:CaptureCode):
             
 
 
-def test_loop(num_trials: int, timeout_seconds: int):
+def test_loop(num_trials: int, timeout_seconds: int, api: APISpec):
     # query to test repeatability of
     query_template = 'In GDC find all cases of lymphoblastic leukemia with a JAK1 somatic mutation and save the result to a csv named {name}. Please do not print out the result, only save it to the csv file'
 
@@ -56,7 +57,7 @@ def test_loop(num_trials: int, timeout_seconds: int):
         capture_code.set_i(i)
         try:
             with timeout(timeout_seconds):
-                test_case(query_template.format(name=f'trial_{i}.csv'), capture_code=capture_code)
+                test_case(query_template.format(name=f'trial_{i}.csv'), capture_code=capture_code, api=api)
         except (Exception, KeyboardInterrupt) as e:
             print(f"Error: {e}")
             capture_code.code[f'trial_{i}'].append(f"Error: {e}")
@@ -64,38 +65,56 @@ def test_loop(num_trials: int, timeout_seconds: int):
         print('='*80)
 
 
-# def fix_yaml():
-#     # load a yaml file
-#     path = here/'../../workdir_20250224_125812/captured_code.yaml'
-#     with open(path, 'r') as f:
-#         data = yaml.safe_load(f)
+
+examples_template = """\
+# Examples of GDC API Usage
+
+Here are some examples of how to use the API:
+{examples}
+"""
+
+def update_api_for_trial(api: APISpec, examples_filename: str|None = None, new_cache_key: str|None = None) -> APISpec:
+    """Add examples to the API documentation"""
     
-
-#     # create a new dict from the yaml
-#     fixed_data = {f'trial_{k}':v for k, v in data.items()}
+    if examples_filename is not None:
+        examples = (gdc_folder / examples_filename).read_text()
+        api['documentation'] = api['documentation'] + '\n\n\n' + examples_template.format(examples=examples)
     
-#     save_to_yaml(fixed_data, path.parent/'fixed_captured_code.yaml')
+    if new_cache_key is not None:
+        api['cache_key'] = new_cache_key
+    
+    return api
+
+def step_2_api() -> APISpec:
+    """GDC API with no examples"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api['cache_key'] = 'api_assistant_gdc_no_examples'
+    # no examples to add, so leave docs as is
+    return api
+
+def step_3a_api() -> APISpec:
+    """GDC API with a single example that is verbatim the expected solution"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api, 
+        examples_filename='examples_(reference_solution).md',
+        new_cache_key='api_assistant_gdc_with_reference_solution'
+    )
+    return api
 
 
+def step_3b_api() -> APISpec:
+    """GDC API with a single example that is slightly different (but still quite similar) to the expected solution"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api,
+        'examples_(single_similar_example).md',
+        new_cache_key='api_assistant_gdc_with_single_similar_example'
+    )
+    return api
 
+## ETC cases
 
-
-
-
-
-def characterize_deviation():
-    """
-    Approach:
-    1. randomly select one example as the reference
-    2. have the LLM first rank and then score (0-100) how similar the other examples are to the reference
-    3. use the farthest example (and perhaps also the middle (distance-wise)) as a new reference
-    4. repeat the process with the new reference
-    5. repeat for a few references (perhaps just randomly select references too, or evenly select from the spread of the first ranking)
-    6. create vectors for each example being the score distance from the reference 0
-    7. use k-means to cluster into groups
-    8. can plot and look at the std of each cluster
-    """
-    pdb.set_trace()
 
 
 
