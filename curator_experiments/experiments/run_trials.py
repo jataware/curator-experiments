@@ -21,7 +21,7 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        test_loop(num_trials=100, timeout_seconds=600, api=step_3b_api())
+        test_loop(num_trials=100, timeout_seconds=600, api=step_3c_api())
 
 
 
@@ -113,6 +113,27 @@ def step_3b_api() -> APISpec:
     )
     return api
 
+
+def step_3c_api() -> APISpec:
+    """GDC API with multiple examples, but shouldn't be enough to overwhelm/saturate the agent"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api,
+        'examples.md',
+        new_cache_key='api_assistant_gdc_with_multiple_examples'
+    )
+    return api
+
+
+def step_3d_api() -> APISpec:
+    """GDC API with too many similar examples that may degrade agent performance"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api,
+        'examples_(many_similar_examples).md',
+        new_cache_key='api_assistant_gdc_with_many_similar_examples'
+    )
+    return api
 ## ETC cases
 
 

@@ -18,8 +18,8 @@ import pdb
 here = Path(__file__).parent
 # workdir, task_variant = here / '../../workdir_20250225_132405', '(GDC w/ No Examples)'                 # step 2: no examples
 # workdir, task_variant = here / '../../workdir_20250228_134952', '(GDC w/ Verbatim Solution Example)'   # step 3a: single verbatim example
-workdir, task_variant = here / '../../workdir_20250303_134057', '(GDC w/ Single Similar Example)'      # step 3b: single similar example
-
+# workdir, task_variant = here / '../../workdir_20250303_134057', '(GDC w/ Single Similar Example)'      # step 3b: single similar example
+workdir, task_variant = here / '../../workdir_20250305_085435', '(GDC w/ Multiple Examples)'            # step 3c: multiple examples
 
 def main():
     analyze_trials()
@@ -68,7 +68,7 @@ def analyze_trials():
         # see if the file is empty
         try:
             data = pd.read_csv(data_path)
-        except pd.errors.EmptyDataError:
+        except (pd.errors.EmptyDataError, Exception):
             scores[trial] = Score(0, False, False, True)
             continue
             
@@ -150,7 +150,7 @@ def analyze_trials():
     any_data = [score.any_data for score in scores.values()]
     created_file = [score.created_file for score in scores.values()]
     xs = np.arange(len(scores))
-    plt.plot(xs, [i==solution_num_ids for i in correct_id_counts], label='Correct IDs', marker='x')
+    plt.plot(xs, [i==solution_num_ids for i in correct_id_counts], label='Trials', marker='x')
     # plt.scatter(xs, correct_num_rows, label='Correct Number of Rows', marker='+')
     # plt.scatter(xs, any_data, label='Any Data', marker='1')
     # plt.scatter(xs, created_file, label='File Created', marker='2')
