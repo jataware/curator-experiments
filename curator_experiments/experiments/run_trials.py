@@ -114,7 +114,18 @@ def step_3b_api() -> APISpec:
     return api
 
 
-def step_3c_api() -> APISpec:
+def step_3c1_api() -> APISpec:
+    """GDC API with multiple examples, but shouldn't be enough to overwhelm/saturate the agent"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api,
+        'examples_(including_reference_and_others).md',
+        new_cache_key='api_assistant_gdc_with_reference_and_multiple_examples'
+    )
+    return api
+
+
+def step_3c2_api() -> APISpec:
     """GDC API with multiple examples, but shouldn't be enough to overwhelm/saturate the agent"""
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
