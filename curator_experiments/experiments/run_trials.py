@@ -5,10 +5,12 @@ run adhoc api N times with the same query and measure the difference in the resu
 
 from archytas.react import ReActAgent, FailedTaskError
 from adhoc_api.tool import AdhocApi, APISpec
-from adhoc_api.loader import load_yaml_api
 from adhoc_api.utils import move_to_isolated_dir
 from pathlib import Path
 from .utils import PythonTool, timeout, TimeoutException, save_to_yaml, CaptureCode
+from .step_2_cases import step_2_api
+from .step_3_cases import step_3a_api, step_3b_api, step_3c1_api, step_3c2_api, step_3d_api
+
 
 import pdb
 
@@ -21,7 +23,7 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        test_loop(num_trials=100, timeout_seconds=600, api=step_3d_api())
+        test_loop(num_trials=100, timeout_seconds=600, api=step_3c1_api())
 
 
 
@@ -63,94 +65,6 @@ def test_loop(num_trials: int, timeout_seconds: int, api: APISpec):
             capture_code.code[f'trial_{i}'].append(f"Error: {e}")
         save_to_yaml({f'trial_{i}': capture_code.code[f'trial_{i}']}, Path('captured_code.yaml'), append=True)
         print('='*80)
-
-
-
-examples_template = """\
-# Examples of GDC API Usage
-
-Here are some examples of how to use the API:
-{examples}
-"""
-
-def update_api_for_trial(api: APISpec, examples_filename: str|None = None, new_cache_key: str|None = None) -> APISpec:
-    """Add examples to the API documentation"""
-    
-    if examples_filename is not None:
-        examples = (gdc_folder / examples_filename).read_text()
-        api['documentation'] = api['documentation'] + '\n\n\n' + examples_template.format(examples=examples)
-    
-    if new_cache_key is not None:
-        api['cache_key'] = new_cache_key
-    
-    return api
-
-def step_2_api() -> APISpec:
-    """GDC API with no examples"""
-    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
-    api['cache_key'] = 'api_assistant_gdc_no_examples'
-    # no examples to add, so leave docs as is
-    return api
-
-def step_3a_api() -> APISpec:
-    """GDC API with a single example that is verbatim the expected solution"""
-    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
-    api = update_api_for_trial(
-        api, 
-        examples_filename='examples_(reference_solution).md',
-        new_cache_key='api_assistant_gdc_with_reference_solution'
-    )
-    return api
-
-
-def step_3b_api() -> APISpec:
-    """GDC API with a single example that is slightly different (but still quite similar) to the expected solution"""
-    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
-    api = update_api_for_trial(
-        api,
-        'examples_(single_similar_example).md',
-        new_cache_key='api_assistant_gdc_with_single_similar_example'
-    )
-    return api
-
-
-def step_3c1_api() -> APISpec:
-    """GDC API with multiple examples, but shouldn't be enough to overwhelm/saturate the agent"""
-    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
-    api = update_api_for_trial(
-        api,
-        'examples_(including_reference_and_others).md',
-        new_cache_key='api_assistant_gdc_with_reference_and_multiple_examples'
-    )
-    return api
-
-
-def step_3c2_api() -> APISpec:
-    """GDC API with multiple examples, but shouldn't be enough to overwhelm/saturate the agent"""
-    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
-    api = update_api_for_trial(
-        api,
-        'examples.md',
-        new_cache_key='api_assistant_gdc_with_multiple_examples'
-    )
-    return api
-
-
-def step_3d_api() -> APISpec:
-    """GDC API with too many similar examples that may degrade agent performance"""
-    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
-    api = update_api_for_trial(
-        api,
-        'examples_(too_many).md',
-        new_cache_key='api_assistant_gdc_with_too_many_examples'
-    )
-    return api
-
-## ETC cases
-
-
-
-
 
 
 

@@ -81,3 +81,29 @@ def save_to_yaml(data: dict[list[str]], filename: Path, append: bool = False):
     else:
         filename.write_text('\n'.join(lines))
         print(f"Saved captured code to {filename}")
+
+
+
+from adhoc_api.tool import APISpec
+from pathlib import Path
+here = Path(__file__).parent
+gdc_folder = here / '../gdc'
+
+examples_template = """\
+# Examples of GDC API Usage
+
+Here are some examples of how to use the API:
+{examples}
+"""
+
+def update_api_for_trial(api: APISpec, examples_filename: str|None = None, new_cache_key: str|None = None) -> APISpec:
+    """Add examples to the API documentation"""
+    
+    if examples_filename is not None:
+        examples = (gdc_folder / examples_filename).read_text()
+        api['documentation'] = api['documentation'] + '\n\n\n' + examples_template.format(examples=examples)
+    
+    if new_cache_key is not None:
+        api['cache_key'] = new_cache_key
+    
+    return api
