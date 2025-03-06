@@ -21,7 +21,7 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        test_loop(num_trials=100, timeout_seconds=600, api=step_3c_api())
+        test_loop(num_trials=100, timeout_seconds=600, api=step_3d_api())
 
 
 
@@ -130,10 +130,11 @@ def step_3d_api() -> APISpec:
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
         api,
-        'examples_(many_similar_examples).md',
-        new_cache_key='api_assistant_gdc_with_many_similar_examples'
+        'examples_(too_many).md',
+        new_cache_key='api_assistant_gdc_with_too_many_examples'
     )
     return api
+
 ## ETC cases
 
 

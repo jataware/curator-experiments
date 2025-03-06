@@ -19,7 +19,8 @@ here = Path(__file__).parent
 # workdir, task_variant = here / '../../workdir_20250225_132405', '(GDC w/ No Examples)'                 # step 2: no examples
 # workdir, task_variant = here / '../../workdir_20250228_134952', '(GDC w/ Verbatim Solution Example)'   # step 3a: single verbatim example
 # workdir, task_variant = here / '../../workdir_20250303_134057', '(GDC w/ Single Similar Example)'      # step 3b: single similar example
-workdir, task_variant = here / '../../workdir_20250305_085435', '(GDC w/ Multiple Examples)'            # step 3c: multiple examples
+# workdir, task_variant = here / '../../workdir_20250305_085435', '(GDC w/ Multiple Examples)'            # step 3c: multiple examples
+workdir, task_variant = here / '../../workdir_20250305_120842', '(GDC w/ Too Many Examples)'            # step 3d: too many examples
 
 def main():
     analyze_trials()
@@ -44,6 +45,8 @@ def analyze_trials():
     # load all the trials
     code_path = workdir/'captured_code.yaml'
     trials: dict = yaml.safe_load(code_path.open())
+    # replace any NoneTypes with []
+    trials = {k: v if v is not None else [] for k, v in trials.items()}
 
     # measure the code spread
     reference_code_path = here / 'step1.py'
