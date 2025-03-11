@@ -1,4 +1,4 @@
-from adhoc_api.tool import APISpec
+from adhoc_api.tool import APISpec, DrafterConfig
 from adhoc_api.loader import load_yaml_api
 from pathlib import Path
 from .utils import update_api_for_trial
@@ -7,16 +7,18 @@ from .utils import update_api_for_trial
 here = Path(__file__).parent
 cbioportal_folder = here / '../cbioportal'
 
+drafter_config = {'provider': 'anthropic', 'model': 'claude-3-7-sonnet-latest'}
+# drafter_config = {'provider': 'anthropic', 'model': 'claude-3-5-sonnet-latest'}
 
 # candidate task:
 # fetch RNA-seq z-scores for STAT5A and STAT5B across the aml target gdc and aml ohsu 2022 studies. save the results to a file
 # see example 8 from cbioportal examples
 
-def step_4a_api() -> APISpec:
+def step_4a_api() -> tuple[APISpec, DrafterConfig]:
     """Cbioportal API with no examples"""
     api = load_yaml_api(cbioportal_folder/'api_no_examples.yaml')
     api['cache_key'] = 'api_assistant_cbioportal_no_examples'
-    return api
+    return api, drafter_config
 
 
 # def step_4b_api() -> APISpec:

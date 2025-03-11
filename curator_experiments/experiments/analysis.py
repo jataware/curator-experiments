@@ -50,7 +50,7 @@ def analyze_trials():
     trials = {k: v if v is not None else [] for k, v in trials.items()}
 
     # measure the code spread
-    reference_code_path = here / 'reference_solution.py'
+    reference_code_path = here / 'gdc_reference_solution.py'
     reference_code = reference_code_path.read_text()
     reference_code = reference_code.split('"""')[-1].strip()  # remove the docstring
 
