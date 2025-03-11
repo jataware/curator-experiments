@@ -9,15 +9,13 @@ from dataclasses import dataclass
 from time import sleep
 from .utils import timeout
 
+from typing import Callable
+import yaml
+
 
 @dataclass
 class Score:
-    correct_ids: float
-    correct_num_rows: bool
-    any_data: bool
-    created_file: bool
-    # code_match: float #TODO: future will have an agent compare the code
-
+    success: bool
 
 class Analyzer:
 
@@ -25,8 +23,29 @@ class Analyzer:
         self.workdir = workdir
         self.task_variant = task_variant
     
-    def identify_solutions(self):
-        ...
+    # def identify_solutions(self):
+    def identify_solutions(self, evaluate_trial_fn: Callable[[str, list[str]], Score]) -> tuple[dict[str, list[str]], dict[str, Score], list[str]]:
+        # load all the trials
+        code_path = self.workdir/'captured_code.yaml'
+        trials: dict = yaml.safe_load(code_path.open())
+        # replace any NoneTypes with []
+        trials: dict[str, list[str]] = {k: v if v is not None else [] for k, v in trials.items()}
+
+        # save the score of each trial
+        scores: dict[str, Score] = {}
+
+        # save a list of the trials that are correct
+        successful_trials: list[str] = []
+
+        # compare each of the trials to the reference
+        for trial, code_chunks in tqdm(trials.items(), desc='Analyzing trials', total=len(trials)):
+            score = evaluate_trial_fn(trial, code_chunks)
+            scores[trial] = score
+            if score.success:
+                successful_trials.append(trial)
+            
+        return trials, scores, successful_trials
+
 
     def have_llm_rank_code_spread(self, reference: str, trials: dict[str, list[str]], N:int=10):
         # check if the cache file exists

@@ -9,11 +9,23 @@ import numpy as np
 # from adhoc_api.uaii import ClaudeAgent, OpenAIAgent
 # from collections import defaultdict
 # from time import sleep
-
+from functools import cache
 # from .utils import timeout
 from .analysis_utils import Score, Analyzer
 
 import pdb
+
+
+
+@dataclass
+class GDCScore(Score):
+    correct_ids: float
+    correct_num_rows: bool
+    any_data: bool
+    created_file: bool
+    # code_match: float #TODO: future will have an agent compare the code
+
+
 
 here = Path(__file__).parent
 workdir, task_variant = here / '../../workdir_20250225_132405', '(GDC w/ No Examples)'                 # step 2: no examples
@@ -27,69 +39,84 @@ def main():
     plot_results()
 
 
-
-
-
-# def analyze_trials():
-def identify_solutions() -> tuple[dict[str, list[str]], dict[str, Score], list[str]]:
+@cache
+def get_gdc_reference():
     # load the reference solution
     reference_path = here / 'ssm_occurrences_lymphoblastic_leukemia_JAK1.csv'
     reference = pd.read_csv(reference_path)
     solution_ids = set(reference['id'].tolist())  # IDs in the CSV were are looking for to indicate if a trial is correct
     # solution_num_ids = len(solution_ids)
 
-    # load all the trials
-    code_path = workdir/'captured_code.yaml'
-    trials: dict = yaml.safe_load(code_path.open())
-    # replace any NoneTypes with []
-    trials = {k: v if v is not None else [] for k, v in trials.items()}
+    return reference, solution_ids
 
-    # save the score of each trial
-    scores: dict[str, Score] = {}
 
-    # save a list of the trials that are correct
-    successful_trials: list[str] = []
 
-    # compare each of the trials to the reference
-    for trial, code_chunks in tqdm(trials.items(), desc='Analyzing trials', total=len(trials)):
-        data_path = workdir/f'{trial}.csv'
+def evaluate_gdc_trial(trial_name: str, code_chunks: list[str]) -> GDCScore:
+    reference, solution_ids = get_gdc_reference()
+
+    data_path = workdir/f'{trial_name}.csv'
         
-        # see if a file was even created
-        if not data_path.exists():
-            scores[trial] = Score(0, False, False, False)
-            continue
-            
-        # see if the file is empty
-        try:
-            data = pd.read_csv(data_path)
-        except (pd.errors.EmptyDataError, Exception):
-            scores[trial] = Score(0, False, False, True)
-            continue
-            
-        correct_num_rows = len(data) == len(reference)
-        any_data = len(data) > 0
+    # see if a file was even created
+    if not data_path.exists():
+        return GDCScore(False, 0, False, False, False)
         
-        try:
-            data_ids = set(data['id'].tolist())
-        except KeyError:
-            # no id column, so just check the raw text from the file
-            raw_text = data_path.read_text()
-            data_ids = set([id for id in solution_ids if id in raw_text])
+    # see if the file is empty
+    try:
+        data = pd.read_csv(data_path)
+    except (pd.errors.EmptyDataError, Exception):
+        return GDCScore(False, 0, False, False, True)
+        
+    # see if csv has correct number of rows or any data at all
+    correct_num_rows = len(data) == len(reference)
+    any_data = len(data) > 0
+    
+    # check how many ids are correct
+    try:
+        trial_ids = set(data['id'].tolist())
+    except KeyError:
+        # no id column, so just check the raw text from the file
+        raw_text = data_path.read_text()
+        trial_ids = set([id for id in solution_ids if id in raw_text])
 
-        # see if the ids are correct
-        correct_ids = len(solution_ids.intersection(data_ids)) / len(solution_ids)
+    # see if the ids are correct. (jaccard score i.e. IoU)
+    correct_ids = len(solution_ids.intersection(trial_ids)) / len(solution_ids.union(trial_ids))
 
-        # save the score
-        scores[trial] = Score(correct_ids, correct_num_rows, any_data, True)
+    # full solution correctness is if correct_ids == 1 (i.e. 8/8)
+    success = correct_ids == 1
 
-        # save the trial if it is correct
-        if correct_ids == 1: successful_trials.append(trial)
+    # save the score
+    return GDCScore(success, correct_ids, correct_num_rows, any_data, True)
 
-    return trials, scores, successful_trials
+
+# def analyze_trials():
+# def identify_solutions() -> tuple[dict[str, list[str]], dict[str, Score], list[str]]:
+
+#     # load all the trials
+#     code_path = workdir/'captured_code.yaml'
+#     trials: dict = yaml.safe_load(code_path.open())
+#     # replace any NoneTypes with []
+#     trials: dict[str, list[str]] = {k: v if v is not None else [] for k, v in trials.items()}
+
+#     # save the score of each trial
+#     scores: dict[str, Score] = {}
+
+#     # save a list of the trials that are correct
+#     successful_trials: list[str] = []
+
+#     # compare each of the trials to the reference
+#     for trial, code_chunks in tqdm(trials.items(), desc='Analyzing trials', total=len(trials)):
+#         score = evaluate_gdc_trial(trial, code_chunks)
+#         scores[trial] = score
+#         if score.success:
+#             successful_trials.append(trial)
+        
+#     return trials, scores, successful_trials
 
 
 def plot_results():
-    trials, scores, successful_trials = identify_solutions()
+    analyzer = Analyzer(workdir=workdir, task_variant=task_variant)
+
+    trials, scores, successful_trials = analyzer.identify_solutions(evaluate_gdc_trial)
     successful_trial_names = set(successful_trials) # for easy lookup
 
     # print out a map from each result to the frequency of the result
@@ -141,7 +168,7 @@ def plot_results():
     plt.xlabel('Success')
     plt.ylabel('Number of Trials')
     plt.title(f'Frequency of Correct Results {task_variant}')
-    # plt.savefig(workdir/'correct_histogram.png')
+    plt.savefig(workdir/'correct_histogram.png')
     plt.show()
 
 
@@ -158,7 +185,7 @@ def plot_results():
     plt.ylabel('Score')
     plt.title(f' Trial Successes {task_variant}')
     plt.legend()
-    # plt.savefig(workdir/'combined_scores_plot.png')
+    plt.savefig(workdir/'combined_scores_plot.png')
     plt.show()
 
 
@@ -168,7 +195,6 @@ def plot_results():
     reference_code = reference_code_path.read_text()
     reference_code = reference_code.split('"""')[-1].strip()  # remove the docstring
 
-    analyzer = Analyzer(workdir=workdir, task_variant=task_variant)
     analyzer.plot_code_clusters(reference_code, trials, successful_trials) # mostly just the charts generated are what is of interest
 
 
