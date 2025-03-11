@@ -9,7 +9,7 @@ from adhoc_api.utils import move_to_isolated_dir
 from pathlib import Path
 from .utils import PythonTool, timeout, TimeoutException, save_to_yaml, CaptureCode
 from .gdc_cases import gdc_trial_2, gdc_trial_3a, gdc_trial_3b, gdc_trial_3c1, gdc_trial_3c2, gdc_trial_3d
-
+from .cbio_cases import cbio_trial_4a
 
 import pdb
 
@@ -22,7 +22,7 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        api, drafter_config, query_base = gdc_trial_2()#3c1()
+        api, drafter_config, query_base = cbio_trial_4a()
         test_loop(
             num_trials=100,
             timeout_seconds=600,
@@ -42,7 +42,7 @@ def test_case(query:str, capture_code:CaptureCode, api: APISpec, drafter_config:
     # Set up archytas agent
     tools = [adhoc_api, python]
     agent = ReActAgent(messages=[], model='gpt-4o', tools=tools, verbose=True, allow_ask_user=False)
-    # query = query_template.format(name=f"trial_{i}.csv")
+
     try:
         answer = agent.react(query)
         print(answer)
@@ -67,14 +67,20 @@ def test_loop(num_trials: int, timeout_seconds: int, api: APISpec, drafter_confi
         print('='*80)
         print(f"Trial {i}")
         capture_code.set_i(i)
+        
+        # attempt to run the test case
         try:
             with timeout(timeout_seconds):
                 test_case(query_template.format(name=f'trial_{i}.csv'), capture_code=capture_code, api=api, drafter_config=drafter_config)
+        
+        # handle exceptions
         except (Exception, KeyboardInterrupt) as e:
             print(f"Error: {e}")
             capture_code.code[f'trial_{i}'].append(f"Error: {e}")
             if isinstance(e, KeyboardInterrupt):
                 interrupted_cur = True
+
+        # save anything captured to yaml
         finally:
             save_to_yaml({f'trial_{i}': capture_code.code[f'trial_{i}']}, Path('captured_code.yaml'), append=True)
             print('='*80)

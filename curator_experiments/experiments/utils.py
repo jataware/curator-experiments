@@ -2,12 +2,17 @@ from archytas.tool_utils import tool
 from archytas.tools import PythonTool as OriginalPythonTool
 from typing import Callable
 #This is a shim class around the regular PythonTool so that we can capture any time code is run by the agent
+
+# custom exception so that if the agent calls exit, it only exits the internal python environment, not the whole program
+class PythonToolExit(Exception): ...
+def python_tool_exit(*args, **kwargs):
+    raise PythonToolExit
 class PythonTool:
     """
     Tool for running python code. If the user asks you to write code, you can run it here.
     """
     def __init__(self, code_side_effect: Callable[[str], None]):
-        self.tool = OriginalPythonTool()
+        self.tool = OriginalPythonTool(locals={'exit': python_tool_exit})
         self.side_effect = code_side_effect
     @tool()
     def run(self, code: str) -> str:
