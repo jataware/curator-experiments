@@ -8,7 +8,7 @@ from adhoc_api.tool import AdhocApi, APISpec, DrafterConfig
 from adhoc_api.utils import move_to_isolated_dir
 from pathlib import Path
 from .utils import PythonTool, timeout, TimeoutException, save_to_yaml, CaptureCode
-from .gdc_cases import step_2_api, step_3a_api, step_3b_api, step_3c1_api, step_3c2_api, step_3d_api
+from .gdc_cases import gdc_trial_2, gdc_trial_3a, gdc_trial_3b, gdc_trial_3c1, gdc_trial_3c2, gdc_trial_3d
 
 
 import pdb
@@ -22,8 +22,14 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        api, drafter_config = step_3c1_api()
-        test_loop(num_trials=100, timeout_seconds=600, api=api, drafter_config=drafter_config)
+        api, drafter_config, query_base = gdc_trial_3c1()
+        test_loop(
+            num_trials=100,
+            timeout_seconds=600,
+            api=api,
+            drafter_config=drafter_config,
+            query_base=query_base
+        )
 
 
 

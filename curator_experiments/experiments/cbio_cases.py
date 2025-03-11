@@ -9,16 +9,17 @@ cbioportal_folder = here / '../cbioportal'
 
 drafter_config = {'provider': 'anthropic', 'model': 'claude-3-7-sonnet-latest'}
 # drafter_config = {'provider': 'anthropic', 'model': 'claude-3-5-sonnet-latest'}
+query_base = 'fetch RNA-seq z-scores for STAT5A and STAT5B across the aml target gdc and aml ohsu 2022 studies'
 
 # candidate task:
 # fetch RNA-seq z-scores for STAT5A and STAT5B across the aml target gdc and aml ohsu 2022 studies. save the results to a file
 # see example 8 from cbioportal examples
 
-def step_4a_api() -> tuple[APISpec, DrafterConfig]:
+def cbio_trial_4a() -> tuple[APISpec, DrafterConfig, str]:
     """Cbioportal API with no examples"""
     api = load_yaml_api(cbioportal_folder/'api_no_examples.yaml')
     api['cache_key'] = 'api_assistant_cbioportal_no_examples'
-    return api, drafter_config
+    return api, drafter_config, query_base
 
 
 # def step_4b_api() -> APISpec:
@@ -41,7 +42,7 @@ from easyrepl import REPL
 import pdb
 def main():
     with move_to_isolated_dir():
-        api = step_4a_api()
+        api = cbio_trial_4a()
         adhoc_api = AdhocApi(
             apis=[api],
             drafter_config={'provider': 'anthropic', 'model': 'claude-3-5-sonnet-latest'}
