@@ -19,12 +19,13 @@ class Score:
 
 class Analyzer:
 
-    def __init__(self, workdir: Path, task_variant: str):
+    def __init__(self, workdir: Path, task_variant: str, evaluate_trial_fn: Callable[[str, list[str]], Score]):
         self.workdir = workdir
         self.task_variant = task_variant
+        self.evaluate_trial_fn = evaluate_trial_fn
     
     # def identify_solutions(self):
-    def identify_solutions(self, evaluate_trial_fn: Callable[[str, list[str]], Score]) -> tuple[dict[str, list[str]], dict[str, Score], list[str]]:
+    def identify_solutions(self) -> tuple[dict[str, list[str]], dict[str, Score], list[str]]:
         # load all the trials
         code_path = self.workdir/'captured_code.yaml'
         trials: dict = yaml.safe_load(code_path.open())
@@ -39,7 +40,7 @@ class Analyzer:
 
         # compare each of the trials to the reference
         for trial, code_chunks in tqdm(trials.items(), desc='Analyzing trials', total=len(trials)):
-            score = evaluate_trial_fn(trial, code_chunks)
+            score = self.evaluate_trial_fn(trial, code_chunks)
             scores[trial] = score
             if score.success:
                 successful_trials.append(trial)
@@ -179,6 +180,92 @@ class Analyzer:
         plt.ylabel('PCA 2')
         plt.savefig(self.workdir/f'score_pca.png')
         plt.show()
+
+    def plot_results(self):
+        # analyzer = Analyzer(workdir=workdir, task_variant=task_variant)
+
+        trials, scores, successful_trials = self.identify_solutions()
+        successful_trial_names = set(successful_trials) # for easy lookup
+
+        # print out a map from each result to the frequency of the result
+        # correct_id_counts = [int(score.correct_ids * solution_num_ids) for score in scores.values()]
+        # correct_id_scores = set(correct_id_counts)
+        # correct_id_freqs = {score: correct_id_counts.count(score) for score in correct_id_scores}
+        # print(f"Correct ID Frequencies: {correct_id_freqs}")
+        
+        # # plot a histogram of the id match %
+        # plt.hist(correct_id_counts, bins=range(0, 10), align='left', rwidth=0.8)
+        # plt.xticks(range(0, 9))
+        # plt.xlabel(f'Number of Correct IDs (max {len(solution_ids)})')
+        # plt.ylabel('Number of Trials')
+        # plt.title(f'Frequency of Correct Results {task_variant}')
+        # plt.savefig(workdir/'correct_ids_histogram.png')
+        # plt.show()
+
+        # # plot a histogram of the number of rows
+        # num_rows = ['correct' if score.correct_num_rows else 'incorrect' for score in scores.values()]
+        # plt.hist(num_rows, bins=range(0, 3), align='left', rwidth=0.8)
+        # plt.xlabel('Number of Rows in Result')
+        # plt.ylabel('Number of Trials')
+        # plt.title(f'Frequency of Correct Number of Rows {task_variant}')
+        # plt.savefig(workdir/'num_rows_histogram.png')
+        # plt.show()
+
+        # # plot a histogram of the any data
+        # any_data = ['yes' if score.any_data else 'no' for score in scores.values()]
+        # plt.hist(any_data, bins=range(0, 3), align='left', rwidth=0.8)
+        # plt.xlabel('Any Data in Result')
+        # plt.ylabel('Number of Trials')
+        # plt.title(f'Frequency of Any Data in Result {task_variant}')
+        # plt.savefig(workdir/'any_data_histogram.png')
+        # plt.show()
+
+        # # plot a histogram of the created file
+        # created_file = ['yes' if score.created_file else 'no' for score in scores.values()]
+        # plt.hist(created_file, bins=range(0, 3), align='left', rwidth=0.8)
+        # plt.xlabel('File Created')
+        # plt.ylabel('Number of Trials')
+        # plt.title(f'Frequency of File Created {task_variant}')
+        # plt.savefig(workdir/'created_file_histogram.png')
+        # plt.show()
+
+
+        # plot a histogram of correct vs incorrect
+        correct = ['correct' if trial_name in successful_trial_names else 'incorrect' for trial_name in scores]
+        plt.hist(correct, bins=range(0, 3), align='left', rwidth=0.8)
+        plt.xlabel('Success')
+        plt.ylabel('Number of Trials')
+        plt.title(f'Frequency of Correct Results {self.task_variant}')
+        plt.savefig(self.workdir/'correct_histogram.png')
+        plt.show()
+
+
+        # make a single unified plot
+        # correct_num_rows = [score.correct_num_rows for score in scores.values()]
+        # any_data = [score.any_data for score in scores.values()]
+        # created_file = [score.created_file for score in scores.values()]
+        xs = np.arange(len(scores))
+        plt.plot(xs, [trial_name in successful_trial_names for trial_name in scores], label='Trials', marker='x')
+        # plt.scatter(xs, correct_num_rows, label='Correct Number of Rows', marker='+')
+        # plt.scatter(xs, any_data, label='Any Data', marker='1')
+        # plt.scatter(xs, created_file, label='File Created', marker='2')
+        plt.xlabel('Trial')
+        plt.ylabel('Score')
+        plt.title(f' Trial Successes {self.task_variant}')
+        plt.legend()
+        plt.savefig(self.workdir/'combined_scores_plot.png')
+        plt.show()
+
+
+        # plotting of the clustering of the code solutions itself.
+        # measure the code spread
+        pdb.set_trace() #TODO: need to make this generic
+        reference_code_path = here / 'gdc_reference_solution.py'
+        reference_code = reference_code_path.read_text()
+        reference_code = reference_code.split('"""')[-1].strip()  # remove the docstring
+
+        analyzer.plot_code_clusters(reference_code, trials, successful_trials) # mostly just the charts generated are what is of interest
+
 
 
 

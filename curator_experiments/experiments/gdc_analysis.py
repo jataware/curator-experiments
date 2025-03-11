@@ -113,6 +113,7 @@ def evaluate_gdc_trial(trial_name: str, code_chunks: list[str]) -> GDCScore:
 #     return trials, scores, successful_trials
 
 
+# TODO: move into analysis_utils.py
 def plot_results():
     analyzer = Analyzer(workdir=workdir, task_variant=task_variant)
 
