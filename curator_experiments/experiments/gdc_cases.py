@@ -11,6 +11,14 @@ query_base = 'In GDC find all cases of lymphoblastic leukemia with a JAK1 somati
 drafter_config = {'provider': 'google', 'model': 'gemini-1.5-pro-001'}
 
 
+def step_2_api() -> tuple[APISpec, DrafterConfig]:
+    """GDC API with no examples"""
+    api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+    api['cache_key'] = 'api_assistant_gdc_no_examples'
+    # no examples to add, so leave docs as is
+    return api, drafter_config
+
+
 def step_3a_api() -> tuple[APISpec, DrafterConfig]:
     """GDC API with a single example that is verbatim the expected solution"""
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
