@@ -22,7 +22,7 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        api, drafter_config, query_base = gdc_trial_3c1()
+        api, drafter_config, query_base = gdc_trial_2()#3c1()
         test_loop(
             num_trials=100,
             timeout_seconds=600,
@@ -55,8 +55,15 @@ def test_loop(num_trials: int, timeout_seconds: int, api: APISpec, drafter_confi
     # query to test repeatability of
     query_template = query_base + ' and save the result to a csv named {name}. Please do not print out the result, only save it to the csv file'
 
+    # if ctrl-c occurs 2x in a row, exit program
+    interrupted_prev = False 
+
+    # keep track of code snippets executed
     capture_code = CaptureCode()
+    
+    # Trials Loop
     for i in range(num_trials):
+        interrupted_cur = False
         print('='*80)
         print(f"Trial {i}")
         capture_code.set_i(i)
@@ -66,12 +73,18 @@ def test_loop(num_trials: int, timeout_seconds: int, api: APISpec, drafter_confi
         except (Exception, KeyboardInterrupt) as e:
             print(f"Error: {e}")
             capture_code.code[f'trial_{i}'].append(f"Error: {e}")
-            if isinstance(e, KeyboardInterrupt): 
-                #allow breaking out of the loop
-                #if we didn't catch the keyboard interrupt it would quit the whole program
-                break
-        save_to_yaml({f'trial_{i}': capture_code.code[f'trial_{i}']}, Path('captured_code.yaml'), append=True)
-        print('='*80)
+            if isinstance(e, KeyboardInterrupt):
+                interrupted_cur = True
+        finally:
+            save_to_yaml({f'trial_{i}': capture_code.code[f'trial_{i}']}, Path('captured_code.yaml'), append=True)
+            print('='*80)
+
+        # if we interrupted twice in a row, exit the program
+        if interrupted_cur and interrupted_prev:
+            print("Exiting program")
+            break
+        interrupted_prev = interrupted_cur
+
 
 
 
