@@ -52,6 +52,9 @@ class Analyzer:
             if score.success:
                 successful_trials.append(trial)
             
+        # print number of successful trials out of total
+        print(f'success rate: {len(successful_trials)}/{len(trials)}')
+        
         return trials, scores, successful_trials
 
 

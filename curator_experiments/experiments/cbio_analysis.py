@@ -4,6 +4,7 @@ import pandas as pd
 from dataclasses import dataclass
 from .analysis_utils import Score, Analyzer
 
+import pdb
 
 here = Path(__file__).parent
 workdir, task_variant = here / '../../workdir_20250311_125333', '(CBioportal w/ No Examples)'
@@ -55,11 +56,27 @@ def evaluate_cbio_trial(trial_name: str, code_chunks: list[str], pass_threshold=
     
     # check how many ids are correct
     try:
-        trial_ids = set(data['sample_id'].tolist())
+        candidate_columns = {'sample_id', 'SampleID', 'sampleId', 'id'}
+        column_name = set(data.columns).intersection(candidate_columns)
+        if len(column_name) == 0:
+            return CBioScore(False, 0)
+        if len(column_name) > 1:
+            print(f"Warning: Multiple candidate columns found: {column_name}. Using the first one.")
+        column_name = column_name.pop()
+        trial_ids = set(data[column_name].tolist())
     except KeyError:
-        # no id column, so just check the raw text from the file
-        raw_text = data_path.read_text()
-        trial_ids = set([id for id in solution_ids if id in raw_text])
+        # search for the best matching column
+        best_column = None
+        best_match_count = 0
+        for column in data.columns:
+            match_count = sum(1 for id in solution_ids if id in data[column].astype(str).tolist())
+            if match_count > best_match_count:
+                best_match_count = match_count
+                best_column = column
+        if best_column is not None:
+            trial_ids = set(data[best_column].astype(str).tolist())
+        else:
+            trial_ids = set()
 
     # see if the ids are correct. (jaccard score i.e. IoU)
     correct_ids_score = len(solution_ids.intersection(trial_ids)) / len(solution_ids.union(trial_ids))
