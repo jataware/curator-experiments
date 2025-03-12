@@ -15,7 +15,6 @@ import pdb
 
 
 here = Path(__file__).parent
-gdc_folder = here / '../gdc'
 
 
 

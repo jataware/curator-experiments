@@ -7,7 +7,8 @@ from .analysis_utils import Score, Analyzer
 import pdb
 
 here = Path(__file__).parent
-workdir, task_variant = here / '../../workdir_20250311_125333', '(CBioportal w/ No Examples)'
+# workdir, task_variant = here / '../../workdir_20250311_125333', '(CBioportal w/ No Examples)'
+workdir, task_variant = here / '../../workdir_20250312_102201', '(CBioportal w/ Reference Example)'
 
 @dataclass
 class CBioScore(Score):
@@ -56,7 +57,7 @@ def evaluate_cbio_trial(trial_name: str, code_chunks: list[str], pass_threshold=
     
     # check how many ids are correct
     try:
-        candidate_columns = {'sample_id', 'SampleID', 'sampleId', 'id'}
+        candidate_columns = {'sample_id', 'SampleID', 'sampleId', 'Sample ID'}
         column_name = set(data.columns).intersection(candidate_columns)
         if len(column_name) == 0:
             return CBioScore(False, 0)
