@@ -22,15 +22,51 @@ def cbio_trial_4a() -> tuple[APISpec, DrafterConfig, str]:
     return api, drafter_config, query_base
 
 
-# def step_4b_api() -> APISpec:
-#     """GDC API with a single example that is verbatim the expected solution"""
-#     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
+def cbio_trial_4b() -> tuple[APISpec, DrafterConfig, str]:
+    """Cbioportal API with a single example that is verbatim the expected solution"""
+    api = load_yaml_api(cbioportal_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api, 
+        examples_filepath=cbioportal_folder/'examples_(reference_solution).md',
+        new_cache_key='api_assistant_cbioportal_with_reference_solution'
+    )
+    return api, drafter_config, query_base
+
+
+# TBD what this example will be...
+# def cbio_trail_4c() -> tuple[APISpec, DrafterConfig, str]:
+#     """Cbioportal API with a single example that is slightly different (but still quite similar) to the expected solution"""
+#     api = load_yaml_api(cbioportal_folder/'api_no_examples.yaml')
 #     api = update_api_for_trial(
-#         api, 
-#         examples_filename='examples_(reference_solution).md',
-#         new_cache_key='api_assistant_gdc_with_reference_solution'
+#         api,
+#         examples_filepath=cbioportal_folder/'examples_(single_similar_example).md',
+#         new_cache_key='api_assistant_cbioportal_with_single_similar_example'
 #     )
-#     return api
+#     return api, drafter_config, query_base
+
+
+def cbio_trial_4c() -> tuple[APISpec, DrafterConfig, str]:
+    """Cbioportal API with multiple examples, but shouldn't be enough to overwhelm/saturate the agent"""
+    api = load_yaml_api(cbioportal_folder/'api_no_examples.yaml')
+    api = update_api_for_trial(
+        api,
+        examples_filepath=cbioportal_folder/'examples.md',
+        new_cache_key='api_assistant_cbio_with_multiple_examples'
+    )
+    return api, drafter_config, query_base
+
+
+# TBD where the too many examples will come from
+# def cbio_trial_4d() -> tuple[APISpec, DrafterConfig, str]:
+#     """Cbioportal API with too many similar examples that may degrade agent performance"""
+#     api = load_yaml_api(cbioportal_folder/'api_no_examples.yaml')
+#     api = update_api_for_trial(
+#         api,
+#         examples_filepath=cbioportal_folder/'examples_(too_many).md',
+#         new_cache_key='api_assistant_cbio_with_too_many_examples'
+#     )
+#     return api, drafter_config, query_base
+
 
 
 from archytas.react import ReActAgent, FailedTaskError

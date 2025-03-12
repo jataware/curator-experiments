@@ -24,7 +24,7 @@ def gdc_trial_3a() -> tuple[APISpec, DrafterConfig, str]:
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
         api, 
-        examples_filename='examples_(reference_solution).md',
+        examples_filepath=gdc_folder/'examples_(reference_solution).md',
         new_cache_key='api_assistant_gdc_with_reference_solution'
     )
     return api, drafter_config, query_base
@@ -35,7 +35,7 @@ def gdc_trial_3b() -> tuple[APISpec, DrafterConfig, str]:
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
         api,
-        'examples_(single_similar_example).md',
+        examples_filepath=gdc_folder/'examples_(single_similar_example).md',
         new_cache_key='api_assistant_gdc_with_single_similar_example'
     )
     return api, drafter_config, query_base
@@ -46,7 +46,7 @@ def gdc_trial_3c1() -> tuple[APISpec, DrafterConfig, str]:
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
         api,
-        'examples_(including_reference_and_others).md',
+        examples_filepath=gdc_folder/'examples_(including_reference_and_others).md',
         new_cache_key='api_assistant_gdc_with_reference_and_multiple_examples'
     )
     return api, drafter_config, query_base
@@ -57,7 +57,7 @@ def gdc_trial_3c2() -> tuple[APISpec, DrafterConfig, str]:
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
         api,
-        'examples.md',
+        examples_filepath=gdc_folder/'examples.md',
         new_cache_key='api_assistant_gdc_with_multiple_examples'
     )
     return api, drafter_config, query_base
@@ -68,7 +68,7 @@ def gdc_trial_3d() -> tuple[APISpec, DrafterConfig, str]:
     api = load_yaml_api(gdc_folder/'api_no_examples.yaml')
     api = update_api_for_trial(
         api,
-        'examples_(too_many).md',
+        examples_filepath=gdc_folder/'examples_(too_many).md',
         new_cache_key='api_assistant_gdc_with_too_many_examples'
     )
     return api, drafter_config, query_base

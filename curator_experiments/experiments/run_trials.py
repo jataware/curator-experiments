@@ -9,7 +9,7 @@ from adhoc_api.utils import move_to_isolated_dir
 from pathlib import Path
 from .utils import PythonTool, timeout, TimeoutException, save_to_yaml, CaptureCode
 from .gdc_cases import gdc_trial_2, gdc_trial_3a, gdc_trial_3b, gdc_trial_3c1, gdc_trial_3c2, gdc_trial_3d
-from .cbio_cases import cbio_trial_4a
+from .cbio_cases import cbio_trial_4a, cbio_trial_4b, cbio_trial_4c
 
 import pdb
 
@@ -22,7 +22,7 @@ gdc_folder = here / '../gdc'
 def main():
     with move_to_isolated_dir():
         #TODO: parameterize this with cmdline args (mainly the api selection)
-        api, drafter_config, query_base = cbio_trial_4a()
+        api, drafter_config, query_base = cbio_trial_4b()
         test_loop(
             num_trials=100,
             timeout_seconds=600,
