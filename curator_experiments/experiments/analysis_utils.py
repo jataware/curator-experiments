@@ -19,10 +19,17 @@ class Score:
 
 class Analyzer:
 
-    def __init__(self, workdir: Path, task_variant: str, evaluate_trial_fn: Callable[[str, list[str]], Score]):
+    def __init__(
+        self,
+        workdir: Path,
+        task_variant: str,
+        evaluate_trial_fn: Callable[[str, list[str]], Score],
+        reference_code: str
+    ):
         self.workdir = workdir
         self.task_variant = task_variant
         self.evaluate_trial_fn = evaluate_trial_fn
+        self.reference_code = reference_code
     
     # def identify_solutions(self):
     def identify_solutions(self) -> tuple[dict[str, list[str]], dict[str, Score], list[str]]:
@@ -259,12 +266,7 @@ class Analyzer:
 
         # plotting of the clustering of the code solutions itself.
         # measure the code spread
-        pdb.set_trace() #TODO: need to make this generic
-        reference_code_path = here / 'gdc_reference_solution.py'
-        reference_code = reference_code_path.read_text()
-        reference_code = reference_code.split('"""')[-1].strip()  # remove the docstring
-
-        analyzer.plot_code_clusters(reference_code, trials, successful_trials) # mostly just the charts generated are what is of interest
+        self.plot_code_clusters(self.reference_code, trials, successful_trials) # mostly just the charts generated are what is of interest
 
 
 
